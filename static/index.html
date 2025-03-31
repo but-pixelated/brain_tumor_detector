@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brain Tumor Detector</title>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #d8d8f0;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+        }
+        
+        .container {
+            background: rgba(26, 22, 47, 0.9);
+            padding: 50px;
+            border-radius: 25px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+            width: 90%;
+            max-width: 650px;
+            text-align: center;
+            animation: slideIn 0.8s ease-out;
+            border: 1px solid rgba(72, 67, 128, 0.3);
+            position: relative;
+            z-index: 1;
+        }
+        
+        h1 {
+            font-size: 2.8em;
+            color: #7e6bff;
+            margin-bottom: 25px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            transition: color 0.3s ease, transform 0.3s ease;
+        }
+        
+        h1:hover {
+            color: #a395ff;
+            transform: translateY(-3px);
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        .custom-file-upload {
+            display: inline-block;
+            padding: 14px 30px;
+            background: #7e6bff;
+            color: #fff;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 1.2em;
+            transition: all 0.4s ease;
+            box-shadow: 0 5px 15px rgba(126, 107, 255, 0.3);
+        }
+        
+        .custom-file-upload:hover {
+            background: #5f4ed6;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(126, 107, 255, 0.5);
+        }
+        
+        #preview {
+            max-width: 100%;
+            width: 320px;
+            margin: 25px auto;
+            border-radius: 15px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+            display: none;
+            opacity: 0;
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            border: 2px solid rgba(126, 107, 255, 0.2);
+        }
+        
+        #preview.show {
+            opacity: 1;
+            transform: scale(1.03);
+        }
+        
+        button {
+            padding: 14px 35px;
+            background: #ff6584;
+            color: #fff;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 1.2em;
+            transition: all 0.4s ease;
+            box-shadow: 0 5px 15px rgba(255, 101, 132, 0.3);
+        }
+        
+        button:disabled {
+            background: #3c3756;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        
+        button:hover:not(:disabled) {
+            background: #e04e6b;
+            transform: translateY(-5px) rotate(1deg);
+            box-shadow: 0 10px 25px rgba(255, 101, 132, 0.5);
+        }
+        
+        #result {
+            margin-top: 35px;
+            padding: 25px;
+            background: #25203e;
+            border-radius: 20px;
+            font-size: 1.3em;
+            color: #d8d8f0;
+            opacity: 0;
+            transform: translateY(25px);
+            transition: all 0.6s ease;
+            border: 1px solid rgba(72, 67, 128, 0.2);
+        }
+        
+        #result.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .prediction-positive {
+            color: #ff6584;
+            font-weight: bold;
+            animation: pulse 1.5s infinite;
+        }
+        
+        .prediction-negative {
+            color: #7e6bff;
+            font-weight: bold;
+            animation: pulse 1.5s infinite;
+        }
+        /* Animations */
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-60px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.06);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <canvas id="backgroundCanvas"></canvas>
+    <div class="container">
+        <h1>Brain Tumor Detector</h1>
+        <label for="imageInput" class="custom-file-upload">Choose MRI Image</label>
+        <input type="file" id="imageInput" accept="image/*" onchange="previewImage()">
+        <img id="preview" src="" alt="Image Preview">
+        <button onclick="uploadImage()" disabled id="uploadBtn">Predict Tumor</button>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('backgroundCanvas');
+        const ctx = canvas.getContext('2d');
+
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 1.5 + 0.5;
+                this.speedX = Math.random() * 0.8 - 0.4;
+                this.speedY = Math.random() * 0.8 - 0.4;
+                this.color = Math.random() > 0.5 ?
+                    `rgba(126, 107, 255, ${Math.random() * 0.5 + 0.3})` :
+                    `rgba(255, 101, 132, ${Math.random() * 0.5 + 0.3})`;
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                if (this.x < 0 || this.x > canvas.width) this.speedX *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.speedY *= -1;
+            }
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        const particlesArray = [];
+        const numberOfParticles = 150;
+        for (let i = 0; i < numberOfParticles; i++) {
+            particlesArray.push(new Particle());
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < particlesArray.length; i++) {
+                particlesArray[i].update();
+                particlesArray[i].draw();
+            }
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        let fileToUpload = null;
+
+        function previewImage() {
+            const fileInput = document.getElementById('imageInput');
+            const preview = document.getElementById('preview');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const result = document.getElementById('result');
+
+            if (fileInput.files && fileInput.files[0]) {
+                fileToUpload = fileInput.files[0];
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    setTimeout(() => preview.classList.add('show'), 10);
+                    uploadBtn.disabled = false;
+                    result.innerHTML = '';
+                    result.classList.remove('show');
+                };
+                reader.readAsDataURL(fileToUpload);
+            }
+        }
+
+        async function uploadImage() {
+            /**
+             * Handles the image upload process, converting the selected image to a base64 string,
+             * sending it to the server for prediction, and displaying the prediction result.
+             * 
+             * This function first checks if an image file is selected. If not, it alerts the user.
+             * Once a file is selected, it disables the upload button and reads the image file as a 
+             * base64 string. It then sends this string to the server for tumor prediction.
+             * 
+             * If the server responds successfully, it displays the prediction result and confidence
+             * level. If there is an error during the process, it displays an error message.
+             * Finally, it re-enables the upload button.
+             */
+
+            if (!fileToUpload) {
+                alert("Please select an image first!");
+                return;
+            }
+
+            const uploadBtn = document.getElementById('uploadBtn');
+            uploadBtn.disabled = true;
+            uploadBtn.innerText = "Predicting...";
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const base64String = e.target.result.split(',')[1];
+                try {
+                    const response = await fetch('/predict?image_base64=' + encodeURIComponent(base64String));
+                    if (!response.ok) {
+                        throw new Error(`Server error: ${response.statusText}`);
+                    }
+                    const data = await response.json();
+                    const resultDiv = document.getElementById('result');
+                    const confidence = (data.prediction[0][data.class_index] * 100).toFixed(2);
+                    const isTumor = data.class_label === "Positive Tumor";
+                    resultDiv.innerHTML = `
+                        <span class="${isTumor ? 'prediction-positive' : 'prediction-negative'}">
+                            ${data.class_label}
+                        </span><br>
+                        Confidence: ${confidence}%
+                    `;
+                    setTimeout(() => resultDiv.classList.add('show'), 10);
+                } catch (error) {
+                    document.getElementById('result').innerHTML = `Error: ${error.message}`;
+                    setTimeout(() => resultDiv.classList.add('show'), 10);
+                } finally {
+                    uploadBtn.disabled = false;
+                    uploadBtn.innerText = "Predict Tumor";
+                }
+            };
+            reader.readAsDataURL(fileToUpload);
+        }
+    </script>
+</body>
+
+</html>
