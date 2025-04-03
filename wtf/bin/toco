@@ -1,6 +1,4 @@
-#!/bin/sh
-'''exec' "/Users/atharvasrivastava/Downloads/brain tumor detection project/wtf/bin/python3" "$0" "$@"
-' '''
+#!/Users/atharvasrivastava/Downloads/brain_tumor_detector/wtf/bin/python3.11
 # -*- coding: utf-8 -*-
 import re
 import sys

@@ -1,12 +1,12 @@
 import os
-import tensorflow as tf
-from fastapi import FastAPI, HTTPException
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-import numpy as np
-import cv2
+import tensorflow as tf # type: ignore
+from fastapi import FastAPI, HTTPException # type: ignore
+from fastapi.staticfiles import StaticFiles # type: ignore
+from fastapi.responses import FileResponse # type: ignore
+import numpy as np # type: ignore
+import cv2 # type: ignore
 import base64
-import uvicorn
+import uvicorn # type: ignore
 
 app = FastAPI()
 
